@@ -1,0 +1,9 @@
+<h1>Edit Ticket</h1>
+<form method="post" enctype="multipart/form-data">
+    <input type="text" name="eventName" id="eventName" value="<%= ticket.eventName %>">
+    <input type="number" name="price" id="price" value="<%= ticket.price %>">
+    <input type="number" name="quantity" id="quantity" value="<%= ticket.quantity %>">
+    <input type="hidden" name="oldImage" id="oldImage" value="<%= ticket.imageUrl %>">
+    <input type="file" name="image" id="image">
+    <button>update</button>
+</form>

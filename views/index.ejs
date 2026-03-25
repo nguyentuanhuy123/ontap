@@ -1,0 +1,31 @@
+<h1>TICKET LIST</h1>
+<form action="/search">
+    <input type="text" name="keyword" id="keyword" placeholder="Search">
+    <button>Search</button>
+</form>
+<a href="/add">Add ticket</a>
+<table>
+    <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Price</th>
+        <th>Qty</th>
+        <th>Image</th>
+        <th>Action</th>
+    </tr>
+    <% tickets.forEach(t=>{%>
+        <tr>
+            <td><%= t.ticketId %></td>
+            <td><%= t.eventName %></td>
+            <td><%= t.price %></td>
+            <td><%= t.quantity %></td>
+            <td><% if(t.imageUrl){
+                %> <img src="<%= t.imageUrl %>" width="80"> <%
+            } %></td>
+            <td>
+                <a href="/edit/<%= t.ticketId%>">edit</a> |
+                <a href="/delete/<%= t.ticketId%>">xoa</a>
+            </td>
+        </tr>
+    <%})%>
+</table>
