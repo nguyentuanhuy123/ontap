@@ -1,0 +1,71 @@
+<h1>Them ve su kien</h1>
+<form id="ticketForm" action="/add" method="post" enctype="multipart/form-data">
+    <label for="">Ten Su Kien</label>
+    <input type="text" name="eventName" id="" required> <br>
+
+    <label for="">Ten Nguoi So Huu</label>
+    <input type="text" name="holderName" id="" required> <br>
+
+    <label for="">danh muc</label>
+    <select name="category" id="">
+        <option value="Standard">Standard</option>
+        <option value="VIP">VIP</option>
+        <option value="VVIP">VVIP</option>
+    </select><br>
+
+    <label for="">SO luong  (>0)</label>
+    <input type="number" name="quantity" min="1" id="" required> <br>
+
+    <label for="">Gia ve (>0)</label>
+    <input type="number" name="pricePerTicket" id="" required> <br>
+
+    <label for="">Ngay su kien</label>
+    <input type="date" name="eventDate" id="" required> <br>
+
+    <label for="">Trang thai</label>
+    <select name="status" id="">
+        <option value="Upcoming">Upcoming</option>
+        <option value="Sold">Sold</option>
+        <option value="Cancelled">Sold</option>
+    </select><br>    
+
+    <label for="">Anh minm hoa</label>
+    <input type="file" name="image" id="" required accept="image/*"> <br>
+
+    <button type="submit">Them moi</button> 
+    <a href="/">Huy</a>   
+</form>
+
+<script>
+document.getElementById("ticketForm").addEventListener("submit", function(e) {
+    let error = "";
+
+    const eventName = this.eventName.value.trim();
+    const holderName = this.holderName.value.trim();
+    const quantity = this.quantity.value;
+    const price = this.pricePerTicket.value;
+    const date = this.eventDate.value;
+    const image = this.image.files.length;
+
+    if (!eventName) {
+        error = "Tên sự kiện không được để trống";
+    } else if (!holderName) {
+        error = "Tên người sở hữu không được để trống";
+    } else if (quantity <= 0) {
+        error = "Số lượng phải > 0";
+    } else if (price <= 0) {
+        error = "Giá vé phải > 0";
+    } else if (!date) {
+        error = "Vui lòng chọn ngày sự kiện";
+    } else if (new Date(date) < new Date().setHours(0,0,0,0)) {
+        error = "Ngày sự kiện phải >= hôm nay";
+    } else if (image === 0) {
+        error = "Vui lòng chọn ảnh";
+    }
+
+    if (error) {
+        e.preventDefault();
+        document.getElementById("errorMsg").innerText = error;
+    }
+});
+</script>

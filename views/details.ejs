@@ -1,0 +1,44 @@
+<h1>CHI TIET VE SU KIEN</h1>
+
+<div style="display: flex;justify-content: center;">
+    <%
+        const qty = Number(ticket.quantity)
+        const price = Number(ticket.pricePerTicket)
+        const total = qty * price
+
+        let discount = 0
+        if(ticket.category === "VIP" && qty >= 4) discount = 0.1;
+        else if(ticket.category === "VVIP" && qty >= 2) discount = 0.15;
+
+        const final = total * (1 - discount);
+    %>
+
+    <div style="border:1px solid black;padding: 15px;width: 300px;">
+        <img src="<%= ticket.imageUrl %>" 
+             style="width: 100%;height: 180px;object-fit: cover;background: black;">
+
+        <h2><%= ticket.eventName %></h2>
+
+        <p><b>Ten nguoi to chuc:</b> <%= ticket.holderName %></p>
+        <p><b>Danh muc:</b> <%= ticket.category %></p>
+        <p><b>So luong:</b> <%= ticket.quantity %></p>
+        <p><b>Gia ve:</b> <%= ticket.pricePerTicket %> VND</p>
+        <p><b>Ngay su kien:</b> <%= ticket.eventDate %></p>
+        <p><b>Trang thai:</b> <%= ticket.status %></p>
+
+        <hr>
+
+        <p><b>Tong tien:</b> <%= total.toLocaleString() %> VND</p>
+        <p><b>Thanh tien:</b> <%= final.toLocaleString() %> VND</p>
+
+        <% if(discount > 0){ %>
+            <p style="color:red;">(Da giam gia <%= discount * 100 %>%)</p>
+        <% } %>
+
+        <div style="margin-top: 10px;">
+            <a href="/edit/<%= ticket.ticketId %>">Sua</a> |
+            <a href="/delete/<%= ticket.ticketId %>" onclick="return confirm('Xoa ?')">Xoa</a> |
+            <a href="/">Quay lai</a>
+        </div>
+    </div>
+</div>

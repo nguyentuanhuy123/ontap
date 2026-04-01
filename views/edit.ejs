@@ -1,0 +1,72 @@
+<h1>Chinh sua ve</h1>
+<form id="ticketForm" action="/edit/<%= ticket.ticketId %>" method="post" enctype="multipart/form-data">
+    <input type="hidden" name="oldImage" id="" value="<%= ticket.imageUrl %>">
+
+    <label for="">Ten Su Kien</label>
+    <input type="text" name="eventName" id="" required value="<%= ticket.eventName %>"> <br>
+
+    <label for="">Ten Nguoi So Huu</label>
+    <input type="text" name="holderName" id="" required value="<%= ticket.holderName %>"> <br>
+
+    <label for="">danh muc</label>
+    <select name="category" id="">
+        <option value="Standard" <%= ticket.category==='Standard'?'selected':'' %>>Standard</option>
+        <option value="VIP" <%= ticket.category==='VIP'?'selected':'' %>>VIP</option>
+        <option value="VVIP" <%= ticket.category==='VVIP'?'selected':'' %>>VVIP</option>
+    </select><br>
+
+    <label for="">SO luong  (>0)</label>
+    <input type="number" name="quantity" min="1" id="" required value="<%= ticket.quantity %>"> <br>
+
+    <label for="">Gia ve (>0)</label>
+    <input type="text" name="pricePerTicket" id="" required value="<%= ticket.pricePerTicket %>"> <br>
+
+    <label for="">Ngay su kien</label>
+    <input type="text" name="eventDate" id="" required value="<%= ticket.eventDate %>"> <br>
+
+    <label for="">Trang thai</label>
+    <select name="status" id="">
+        <option value="Upcoming" <%= ticket.status==='Upcoming'?'selected':'' %>>Upcoming</option>
+        <option value="Sold" <%= ticket.status==='Sold'?'selected':'' %>>Sold</option>
+        <option value="Cancelled" <%= ticket.status==='Cancelled'?'selected':'' %>>Sold</option>
+    </select><br>    
+
+    <label for="">Anh minm hoa</label>
+    <input type="file" name="image" id="" required accept="image/*"> <br>
+
+    <button type="submit">cap nhat</button> 
+    <a href="/">Huy</a>   
+</form>
+<script>
+document.getElementById("ticketForm").addEventListener("submit", function(e) {
+    let error = "";
+
+    const eventName = this.eventName.value.trim();
+    const holderName = this.holderName.value.trim();
+    const quantity = this.quantity.value;
+    const price = this.pricePerTicket.value;
+    const date = this.eventDate.value;
+    const image = this.image.files.length;
+
+    if (!eventName) {
+        error = "Tên sự kiện không được để trống";
+    } else if (!holderName) {
+        error = "Tên người sở hữu không được để trống";
+    } else if (quantity <= 0) {
+        error = "Số lượng phải > 0";
+    } else if (price <= 0) {
+        error = "Giá vé phải > 0";
+    } else if (!date) {
+        error = "Vui lòng chọn ngày sự kiện";
+    } else if (new Date(date) < new Date().setHours(0,0,0,0)) {
+        error = "Ngày sự kiện phải >= hôm nay";
+    } else if (image === 0) {
+        error = "Vui lòng chọn ảnh";
+    }
+
+    if (error) {
+        e.preventDefault();
+        document.getElementById("errorMsg").innerText = error;
+    }
+});
+</script>
