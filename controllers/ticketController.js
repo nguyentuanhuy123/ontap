@@ -54,7 +54,6 @@ exports.update=async(req ,res)=>{
                 
                 imageUrl
     })
-    await model.create(ticket)
     res.redirect("/")
 }
 
