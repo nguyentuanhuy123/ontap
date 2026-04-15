@@ -1,0 +1,106 @@
+test-socket.html<!DOCTYPE html>
+<html>
+<head>
+  <title>Socket Test</title>
+</head>
+<body>
+  <h2>🔥 Real-time Test</h2>
+
+  <div>
+    <input id="email" placeholder="email" />
+    <input id="password" placeholder="password" type="password" />
+    <button onclick="login()">Login</button>
+  </div>
+
+  <br/>
+
+  <div>
+    <input id="toUserId" placeholder="toUserId" />
+    <input id="message" placeholder="message" />
+    <button onclick="sendMessage()">Send</button>
+  </div>
+
+  <h3>Logs:</h3>
+  <div id="log"></div>
+
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script>
+    let socket;
+    let accessToken;
+
+    const log = (msg) => {
+      const div = document.getElementById("log");
+      div.innerHTML += "<p>" + msg + "</p>";
+    };
+
+    async function login() {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+
+      const res = await fetch("http://127.0.0.1:3000/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await res.json();
+
+      if (!data.success) {
+        log("❌ Login failed");
+        return;
+      }
+
+      accessToken = data.accessToken;
+
+      log("✅ Login success");
+
+      connectSocket();
+    }
+
+    function connectSocket() {
+      socket = io("http://127.0.0.1:3000", {
+        auth: { token: accessToken }
+      });
+
+      socket.on("connect", () => {
+        log("🟢 Connected: " + socket.id);
+      });
+
+      socket.on("disconnect", () => {
+        log("🔴 Disconnected");
+      });
+
+      socket.on("connect_error", (err) => {
+        log("❌ Error: " + err.message);
+      });
+
+      // 🔥 nhận message
+      socket.on("message:receive", (data) => {
+        log(`📩 ${data.from}: ${data.message}`);
+      });
+
+      // 🔥 presence
+      socket.on("user:online", ({ userId }) => {
+        log(`🟢 User online: ${userId}`);
+      });
+
+      socket.on("user:offline", ({ userId }) => {
+        log(`🔴 User offline: ${userId}`);
+      });
+
+      socket.on("typing", ({ from }) => {
+        log(`✍️ ${from} is typing...`);
+      });
+    }
+
+    function sendMessage() {
+      const toUserId = document.getElementById("toUserId").value;
+      const message = document.getElementById("message").value;
+
+      socket.emit("message:send", { toUserId, message });
+
+      log("📤 You: " + message);
+    }
+  </script>
+</body>
+</html>
