@@ -15,11 +15,7 @@ const app = express();
  * ✅ CORS CONFIG (QUAN TRỌNG)
  */
 app.use(cors({
-  origin: [
-    "http://127.0.0.1:5500", // live server
-    "http://localhost:3001", // frontend dev
-    "http://127.0.0.1:3000"
-  ],
+  origin:true,
   credentials: true
 }));
 
