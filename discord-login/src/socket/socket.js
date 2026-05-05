@@ -9,7 +9,7 @@ export const connectSocket = (accessToken) => {
   if (!accessToken || !sessionId) return null;
 
   if (!socket) {
-    socket = io("http://localhost:3000", {
+    socket = io("https://unclaimed-walrus-exchange.ngrok-free.dev", {
       auth: {
         token: accessToken,
         sessionId

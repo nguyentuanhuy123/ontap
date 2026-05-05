@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { login,verifyLoginOtp } from '../services/auth';
+import { forgotPassword, login,restoreAccount,verifyLoginOtp } from '../services/auth';
 import { connectSocket } from '../socket/socket';
-import { restoreAccount } from '../api';
+import { useToast } from '../context/ToastContext'; 
+
 
 const Login = ({ setIsAuth }) => {
+  const { showToast } = useToast(); // 🔥 Khởi tạo showToast
+
   const navigate = useNavigate();
 
   // State quản lý luồng UI
@@ -89,25 +92,15 @@ const Login = ({ setIsAuth }) => {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch('http://localhost:3000/api/auth/forgot', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: emailOrPhone })
-      });
-      
-      const data = await response.json();
-      if (response.ok) {
-        alert("Nếu tài khoản tồn tại, một liên kết đặt lại mật khẩu đã được gửi đến email của bạn.");
-      } else {
-        setError(data.message);
-      }
+      // 🔥 Gọi hàm từ service thay vì fetch trực tiếp
+      await forgotPassword(emailOrPhone);
+      showToast("Nếu tài khoản tồn tại, một liên kết đặt lại mật khẩu đã được gửi đến email của bạn.", "success");
     } catch (err) {
-      setError("Không thể gửi yêu cầu. Vui lòng thử lại sau.");
+      setError(err.message || "Không thể gửi yêu cầu. Vui lòng thử lại sau.");
     } finally {
       setLoading(false);
     }
   };
-
   const handleRestoreAccount = async () => {
     setLoading(true);
     setError("");
@@ -122,7 +115,7 @@ const Login = ({ setIsAuth }) => {
       setIsAuth(true);
       connectSocket(data.accessToken);
       
-      alert("Tài khoản của bạn đã được khôi phục thành công!");
+      showToast("Tài khoản của bạn đã được khôi phục thành công!", "success");
       navigate("/");
     } catch (err) {
       setError(err.message || "Khôi phục tài khoản thất bại.");

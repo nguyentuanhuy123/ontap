@@ -1,7 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { registerAccount } from '../services/auth';
+import { useToast } from '../context/ToastContext'; 
+
 
 const Register = () => {
+  const { showToast } = useToast(); // 🔥 Khởi tạo showToast
+
+
   const navigate = useNavigate();
   
   // State quản lý dữ liệu form
@@ -75,58 +81,42 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Kiểm tra validate form
     if (!validateForm()) return;
 
     setIsLoading(true);
     setServerError('');
 
-    // Ghép ngày tháng năm thành chuỗi YYYY-MM-DD (hoặc format tuỳ backend của bạn)
-    // Đảm bảo tháng và ngày có 2 chữ số (vd: 01, 09)
     const formattedMonth = formData.month.toString().padStart(2, '0');
     const formattedDay = formData.day.toString().padStart(2, '0');
     const birthdayString = `${formData.year}-${formattedMonth}-${formattedDay}`;
 
     try {
-      const response = await fetch('http://localhost:3000/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          displayName: formData.displayName, // Có thể rỗng nếu backend cho phép
-          username: formData.username,
-          password: formData.password,
-          birthday: birthdayString
-        })
+      // 🔥 Dùng hàm service thay vì gọi fetch trực tiếp
+      await registerAccount({
+        email: formData.email,
+        displayName: formData.displayName,
+        username: formData.username,
+        password: formData.password,
+        birthday: birthdayString
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        // Ánh xạ lỗi từ Backend về hiển thị cho đúng input
-        // Backend của bạn trả về data.message (dựa theo hàm sendError của bạn)
-        const errMsg = data.message || "Đăng ký thất bại";
-        
-        if (errMsg.toLowerCase().includes("email")) {
-          setErrors({ email: `- ${errMsg}` });
-        } else if (errMsg.toLowerCase().includes("username")) {
-          setErrors({ username: `- ${errMsg}` });
-        } else if (errMsg.toLowerCase().includes("password")) {
-          setErrors({ password: `- ${errMsg}` });
-        } else {
-           setServerError(errMsg);
-        }
-        throw new Error(errMsg);
-      }
-
       // Đăng ký thành công -> Chuyển về trang đăng nhập
-      alert("Tạo tài khoản thành công! Vui lòng đăng nhập.");
-      navigate('/login'); // Quay về trang Login
+      showToast("Tạo tài khoản thành công! Vui lòng đăng nhập.", "success");
+      navigate('/login'); 
 
     } catch (err) {
-      console.error("Lỗi đăng ký:", err.message);
+      // Lỗi trả về từ hàm throw new Error() ở service
+      const errMsg = err.message;
+      
+      if (errMsg.toLowerCase().includes("email")) {
+        setErrors({ email: `- ${errMsg}` });
+      } else if (errMsg.toLowerCase().includes("username")) {
+        setErrors({ username: `- ${errMsg}` });
+      } else if (errMsg.toLowerCase().includes("password")) {
+        setErrors({ password: `- ${errMsg}` });
+      } else {
+        setServerError(errMsg);
+      }
     } finally {
       setIsLoading(false);
     }

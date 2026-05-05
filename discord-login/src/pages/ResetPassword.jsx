@@ -1,9 +1,15 @@
 
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { resetPassword } from '../services/auth';
+import { useToast } from '../context/ToastContext'; 
+
 
 
 const ResetPassword = () => {
+  const { showToast } = useToast(); // 🔥 Khởi tạo showToast
+
+
   const navigate = useNavigate();
   // Giả định link đặt lại mật khẩu là /reset-password/:token
   const [searchParams] = useSearchParams();
@@ -48,41 +54,28 @@ const ResetPassword = () => {
     if (!validateForm()) return;
 
     setIsLoading(true);
-    
-    // Lấy sessionId từ localStorage (nếu có)
+    setServerError('');
     const sessionId = localStorage.getItem("sessionId");
 
     try {
-      const response = await fetch('http://localhost:3000/api/auth/reset', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: userId, 
-          token: token,   
-          newPassword: newPassword,
-          sessionId: sessionId // 🔥 Gửi kèm sessionId
-        })
+      // 🔥 Gọi hàm từ service, truyền vào object chứa dữ liệu
+      await resetPassword({
+        userId: userId, 
+        token: token,   
+        newPassword: newPassword,
+        sessionId: sessionId 
       });
 
-      const data = await response.json();
+      setIsSuccess(true);
+      showToast("Đặt lại mật khẩu thành công!", "success");
+      
+      // Chuyển hướng người dùng
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 2000);
 
-      if (response.ok) {
-        // Vì Backend trả về token mới, hãy lưu đè chúng vào storage để duy trì đăng nhập
-        sessionStorage.setItem("accessToken", data.accessToken);
-        localStorage.setItem("refreshToken", data.refreshToken);
-        
-        setIsSuccess(true);
-        alert("Đặt lại mật khẩu thành công!");
-        
-        // Chuyển hướng về Home thay vì Login vì chúng ta đã có token mới
-        setTimeout(() => {
-          window.location.href = '/';
-        }, 2000);
-      } else {
-        setServerError(data.message);
-      }
     } catch (err) {
-      setServerError("Lỗi kết nối.");
+      setServerError(err.message || "Lỗi kết nối.");
     } finally {
       setIsLoading(false);
     }

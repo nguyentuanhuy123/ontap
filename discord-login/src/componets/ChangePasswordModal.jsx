@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
-import { X } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
+import { changePassword } from '../services/auth'; // 🔥 Import service
+import { useToast } from '../context/ToastContext'; // 🔥 Import hook
 
 const ChangePasswordModal = ({ isOpen, onClose }) => {
+  const { showToast } = useToast(); // 🔥 Khởi tạo showToast
+
   const [formData, setFormData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -47,47 +51,34 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      showToast("Vui lòng kiểm tra lại thông tin!", "error");
+      return;
+    }
 
     setIsLoading(true);
     try {
-      
-      const token = sessionStorage.getItem("accessToken");
       const sessionId = sessionStorage.getItem("sessionId") || localStorage.getItem("sessionId");
 
-      // 2. Gửi đầy đủ 3 trường mà Backend yêu cầu
-      const response = await fetch('http://localhost:3000/api/auth/password', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          currentPassword: formData.currentPassword,
-          newPassword: formData.newPassword,
-          sessionId: sessionId // 🔥 Đã thêm dòng này để hết lỗi Missing fields
-        })
+      // 🔥 Sử dụng service tập trung
+      await changePassword({
+        currentPassword: formData.currentPassword,
+        newPassword: formData.newPassword,
+        sessionId: sessionId
       });
 
-      const result = await response.json();
-
-      if (response.ok) {
-        alert("Cập nhật mật khẩu thành công!");
-        setFormData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-        onClose();
-      } else {
-        const msg = result.message || "";
-        if (msg.toLowerCase().includes("current password")) {
-          setErrors({ currentPassword: "- Mật khẩu hiện tại không đúng" });
-        } else if (msg.toLowerCase().includes("weak")) {
-          setErrors({ newPassword: "- Mật khẩu quá yếu" });
-        } else {
-          alert(msg || "Có lỗi xảy ra khi đổi mật khẩu");
-        }
-      }
+      showToast("Cập nhật mật khẩu thành công!", "success");
+      onClose();
     } catch (err) {
-      console.error("Lỗi API Password:", err);
-      alert("Không thể kết nối đến máy chủ");
+      const msg = err.message.toLowerCase();
+      // Xử lý mapping lỗi từ server vào các field tương ứng
+      if (msg.includes("current password")) {
+        setErrors({ currentPassword: "- Mật khẩu hiện tại không đúng" });
+      } else if (msg.includes("weak")) {
+        setErrors({ newPassword: "- Mật khẩu quá yếu" });
+      } else {
+        showToast(err.message || "Đã xảy ra lỗi, vui lòng thử lại", "error");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -104,24 +95,27 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
   );
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 px-4">
-      <div className="bg-[#313338] w-full max-w-[440px] rounded-lg shadow-2xl relative overflow-hidden">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/75 backdrop-blur-[2px] px-4 py-6">
+      {/* Modal Container: Linh hoạt chiều cao để không bị bàn phím mobile che mất */}
+      <div className="bg-[#313338] w-full max-w-[440px] rounded-xl md:rounded-lg shadow-2xl relative flex flex-col max-h-full overflow-hidden transition-all">
         
+        {/* Close Button - To hơn trên mobile để dễ bấm */}
         <button 
           onClick={onClose}
-          className="absolute top-4 right-4 text-[#B5BAC1] hover:text-white transition"
+          className="absolute top-3 right-3 md:top-4 md:right-4 text-[#B5BAC1] hover:text-white p-2 transition z-10"
         >
           <X size={24} />
         </button>
 
-        <form onSubmit={handleSubmit}>
-          <div className="p-6">
-            <h2 className="text-2xl font-bold text-white text-center mb-2">Cập nhật mật khẩu</h2>
-            <p className="text-[#B5BAC1] text-center text-[15px] mb-6">
+        <form onSubmit={handleSubmit} className="flex flex-col overflow-hidden">
+          {/* Scrollable Content */}
+          <div className="p-6 md:p-8 overflow-y-auto">
+            <h2 className="text-xl md:text-2xl font-bold text-white text-center mb-2">Cập nhật mật khẩu</h2>
+            <p className="text-[#B5BAC1] text-center text-sm md:text-[15px] mb-8 leading-relaxed">
               Nhập mật khẩu hiện tại và mật khẩu mới để bảo mật tài khoản.
             </p>
             
-            <div className="flex flex-col gap-5">
+            <div className="space-y-5">
               <div>
                 <LabelWithError title="Mật khẩu hiện tại" fieldName="currentPassword" isRequired={true} />
                 <input 
@@ -129,7 +123,8 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
                   type="password"
                   value={formData.currentPassword}
                   onChange={handleChange}
-                  className="w-full bg-[#1E1F22] text-[#DBDEE1] p-2.5 rounded border border-transparent outline-none focus:ring-1 focus:ring-[#5865F2] transition-all"
+                  placeholder="••••••••"
+                  className="w-full bg-[#1E1F22] text-[#DBDEE1] p-3 rounded border border-transparent outline-none focus:ring-2 focus:ring-[#5865F2] transition-all text-base"
                   style={{ borderColor: errors.currentPassword ? '#F23F42' : 'transparent' }}
                 />
               </div>
@@ -141,7 +136,8 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
                   type="password"
                   value={formData.newPassword}
                   onChange={handleChange}
-                  className="w-full bg-[#1E1F22] text-[#DBDEE1] p-2.5 rounded border border-transparent outline-none focus:ring-1 focus:ring-[#5865F2] transition-all"
+                  placeholder="••••••••"
+                  className="w-full bg-[#1E1F22] text-[#DBDEE1] p-3 rounded border border-transparent outline-none focus:ring-2 focus:ring-[#5865F2] transition-all text-base"
                   style={{ borderColor: errors.newPassword ? '#F23F42' : 'transparent' }}
                 />
               </div>
@@ -153,26 +149,29 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
                   type="password"
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  className="w-full bg-[#1E1F22] text-[#DBDEE1] p-2.5 rounded border border-transparent outline-none focus:ring-1 focus:ring-[#5865F2] transition-all"
+                  placeholder="••••••••"
+                  className="w-full bg-[#1E1F22] text-[#DBDEE1] p-3 rounded border border-transparent outline-none focus:ring-2 focus:ring-[#5865F2] transition-all text-base"
                   style={{ borderColor: errors.confirmPassword ? '#F23F42' : 'transparent' }}
                 />
               </div>
             </div>
           </div>
 
-          <div className="bg-[#2B2D31] p-4 mt-2 flex justify-end items-center gap-2">
+          {/* Footer - Sắp xếp dọc trên mobile siêu hẹp, ngang trên phần lớn thiết bị */}
+          <div className="bg-[#2B2D31] p-4 flex flex-col-reverse sm:flex-row justify-end items-center gap-3">
             <button 
               type="button"
               onClick={onClose}
-              className="text-white text-sm font-medium hover:underline px-4 py-2"
+              className="w-full sm:w-auto text-white text-sm font-medium hover:underline px-4 py-2.5 transition"
             >
               Hủy bỏ
             </button>
             <button 
               type="submit"
               disabled={isLoading}
-              className="bg-[#5865F2] hover:bg-[#4752C4] text-white px-8 py-2.5 rounded text-sm font-medium transition-colors min-w-[96px] disabled:opacity-50"
+              className="w-full sm:min-w-[96px] bg-[#5865F2] hover:bg-[#4752C4] text-white px-8 py-2.5 rounded font-medium text-sm transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
             >
+              {isLoading && <Loader2 size={16} className="animate-spin" />}
               {isLoading ? 'Đang xử lý...' : 'Xong'}
             </button>
           </div>

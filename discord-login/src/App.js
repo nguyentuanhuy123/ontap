@@ -6,6 +6,7 @@ import Register from './pages/Register';
 import ResetPassword from './pages/ResetPassword';
 import { connectSocket, disconnectSocket, getSocket } from "./socket/socket";
 import { refreshToken } from "./services/auth";
+import { ToastProvider } from './context/ToastContext'; // Import Provider của bạn
 
 function App() {
   const [isAuth, setIsAuth] = useState(false);
@@ -84,14 +85,17 @@ function App() {
   }, [isAuth, startAutoRefresh]);
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={isAuth ? <Navigate to="/" /> : <Login setIsAuth={setIsAuth} />} />
-        <Route path="/" element={isAuth ? <Home setIsAuth={setIsAuth} /> : <Navigate to="/login" />} />
-        <Route path="/register" element={isAuth ? <Navigate to="/" /> : <Register />} />
-        <Route path="/reset" element={<ResetPassword />} />
-      </Routes>
-    </BrowserRouter>
+    <ToastProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={isAuth ? <Navigate to="/" /> : <Login setIsAuth={setIsAuth} />} />
+          <Route path="/" element={isAuth ? <Home setIsAuth={setIsAuth} /> : <Navigate to="/login" />} />
+          <Route path="/register" element={isAuth ? <Navigate to="/" /> : <Register />} />
+          <Route path="/reset" element={<ResetPassword />} />
+        </Routes>
+      </BrowserRouter>
+    </ToastProvider>
+    
   );
 }
 

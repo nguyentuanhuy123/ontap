@@ -1,55 +1,76 @@
-// src/api.js
+import { API_AUTH_URL } from './config';
+
+const clearAuthStorage = () => {
+  sessionStorage.clear();
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
+  localStorage.removeItem('sessionId');
+  localStorage.removeItem('user');
+};
+
 export const apiFetch = async (url, options = {}) => {
   const accessToken = sessionStorage.getItem('accessToken');
   const refreshToken = localStorage.getItem('refreshToken');
 
-  // Add Authorization header
-  options.headers = {
-    ...(options.headers || {}),
-    'Content-Type': 'application/json',
-    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
+  const headers = new Headers(options.headers || {});
+
+  if (accessToken && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${accessToken}`);
+  }
+
+  const hasBody = options.body !== undefined && options.body !== null;
+  const isFormData = hasBody && options.body instanceof FormData;
+
+  if (hasBody && !isFormData && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  const fetchOptions = {
+    ...options,
+    headers,
   };
 
-  let res = await fetch(url, options);
+  let res = await fetch(url, fetchOptions);
 
-  // Nếu accessToken hết hạn (401), tự động refresh
-  if (res.status === 401 && refreshToken) {
-    const refreshRes = await fetch('http://localhost:3000/api/auth/refresh', {
+  if (res.status !== 401 || !refreshToken) {
+    return res;
+  }
+
+  try {
+    const refreshRes = await fetch(`${API_AUTH_URL}/refresh`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken })
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ refreshToken }),
     });
 
     if (!refreshRes.ok) {
-      // Refresh token hết hạn → logout
-      sessionStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      throw new Error('Session expired. Please login again.');
+      clearAuthStorage();
+      window.location.href = '/login';
+      throw new Error('Phiên đăng nhập đã hết hạn.');
     }
 
     const refreshData = await refreshRes.json();
-    // Lưu token mới
+
     sessionStorage.setItem('accessToken', refreshData.accessToken);
-    localStorage.setItem('refreshToken', refreshData.refreshToken);
+    if (refreshData.refreshToken) {
+      localStorage.setItem('refreshToken', refreshData.refreshToken);
+    }
+    if (refreshData.sessionId) {
+      localStorage.setItem('sessionId', refreshData.sessionId);
+    }
 
-    // Retry request với token mới
-    options.headers.Authorization = `Bearer ${refreshData.accessToken}`;
-    res = await fetch(url, options);
+    headers.set('Authorization', `Bearer ${refreshData.accessToken}`);
+
+    return await fetch(url, {
+      ...options,
+      headers,
+    });
+  } catch (err) {
+    console.error('Lỗi tự động refresh token:', err);
+    clearAuthStorage();
+    window.location.href = '/login';
+    throw err;
   }
-
-  return res;
-};
-
-export const restoreAccount = async (email, password) => {
-  const response = await fetch('http://localhost:3000/api/auth/account/restore', { // Thay URL bằng endpoint của bạn
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-  });
-
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.message || 'Không thể khôi phục tài khoản.');
-  }
-  return data;
 };

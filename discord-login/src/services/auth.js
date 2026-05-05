@@ -1,135 +1,300 @@
-const API_URL = "http://localhost:3000/api/auth";
-const API_USER_URL = "http://localhost:3000/api/user";
+import { API_AUTH_URL, API_USER_URL } from '../config';
+import { apiFetch } from '../api';
+
+const saveAuthData = (data) => {
+  if (data?.accessToken) {
+    sessionStorage.setItem('accessToken', data.accessToken);
+  }
+
+  if (data?.refreshToken) {
+    localStorage.setItem('refreshToken', data.refreshToken);
+  }
+
+  if (data?.sessionId) {
+    localStorage.setItem('sessionId', data.sessionId);
+  }
+
+  if (data?.user) {
+    localStorage.setItem('user', JSON.stringify(data.user));
+  }
+};
 
 // Login
 export const login = async (email, password) => {
-  const sessionId = localStorage.getItem("sessionId");
+  const sessionId = localStorage.getItem('sessionId');
 
-  const res = await fetch(`${API_URL}/login`, {
-    method: "POST",
-    headers: { 
-      "Content-Type": "application/json",
-      "x-session-id": sessionId || ""   // 🔥 thêm dòng này
+  const res = await fetch(`${API_AUTH_URL}/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-session-id': sessionId || '',
     },
-    body: JSON.stringify({ email, password })
+    body: JSON.stringify({ email, password }),
   });
 
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Login failed");
 
-  // 🔥 CHỈ LƯU KHI CÓ TOKEN (Trường hợp thiết bị tin cậy)
-  if (data.accessToken) {
-    sessionStorage.setItem("accessToken", data.accessToken);
-    localStorage.setItem("refreshToken", data.refreshToken);
-    localStorage.setItem("sessionId", data.sessionId);
-    // Bạn có thể lưu cả user vào localStorage nếu cần
-    if (data.user) localStorage.setItem("user", JSON.stringify(data.user));
+  if (!res.ok) {
+    throw new Error(data.message || 'Login failed');
   }
 
-  return data; // Trả về data để Component check requireOtp
+  saveAuthData(data);
+  return data;
 };
 
+// Verify OTP
 export const verifyLoginOtp = async (userId, otp) => {
+  const sessionId = localStorage.getItem('sessionId');
 
-  const sessionId = localStorage.getItem("sessionId");
-
-  const res = await fetch(`${API_URL}/login/verify-otp`, {
-    method: "POST",
-    headers: { 
-      "Content-Type": "application/json",
-      "x-session-id": sessionId || "" // 🔥 PHẢI GỬI LÊN Ở ĐÂY NỮA
+  const res = await fetch(`${API_AUTH_URL}/login/verify-otp`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-session-id': sessionId || '',
     },
-    body: JSON.stringify({ userId, otp })
+    body: JSON.stringify({ userId, otp }),
   });
 
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "OTP verification failed");
 
-  // 🔥 Bước này chắc chắn có token khi thành công
-  sessionStorage.setItem("accessToken", data.accessToken);
-  localStorage.setItem("refreshToken", data.refreshToken);
-  localStorage.setItem("sessionId", data.sessionId);
-  if (data.user) localStorage.setItem("user", JSON.stringify(data.user));
+  if (!res.ok) {
+    throw new Error(data.message || 'OTP verification failed');
+  }
 
+  saveAuthData(data);
   return data;
 };
 
 // Refresh token
 export const refreshToken = async () => {
-  const refresh = localStorage.getItem("refreshToken");
-  if (!refresh) throw new Error("No refresh token");
+  const refresh = localStorage.getItem('refreshToken');
+  if (!refresh) throw new Error('No refresh token');
 
-  const res = await fetch(`${API_URL}/refresh`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refreshToken: refresh })
+  const res = await fetch(`${API_AUTH_URL}/refresh`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ refreshToken: refresh }),
   });
 
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Refresh failed");
 
-  sessionStorage.setItem("accessToken", data.accessToken);
-  localStorage.setItem("refreshToken", data.refreshToken);
-  localStorage.setItem("sessionId", data.sessionId); // ✅ đúng
+  if (!res.ok) {
+    throw new Error(data.message || 'Refresh failed');
+  }
 
+  saveAuthData(data);
   return data;
 };
 
 // Logout
 export const logout = async () => {
-  const accessToken = sessionStorage.getItem("accessToken");
-  const refreshTokenValue = localStorage.getItem("refreshToken");
+  const accessToken = sessionStorage.getItem('accessToken');
+  const refreshTokenValue = localStorage.getItem('refreshToken');
 
-  if (accessToken && refreshTokenValue) {
-    await fetch(`${API_URL}/logout`, {
-      method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${accessToken}`
+  if (refreshTokenValue) {
+    await fetch(`${API_AUTH_URL}/logout`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       },
-      body: JSON.stringify({ refreshToken: refreshTokenValue })
-    });
+      body: JSON.stringify({ refreshToken: refreshTokenValue }),
+    }).catch(() => {});
   }
 
   sessionStorage.clear();
-  localStorage.removeItem("refreshToken");
-  localStorage.removeItem("user");
-
-  localStorage.setItem("logout", Date.now());
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
+  localStorage.removeItem('user');
+  localStorage.setItem('logout', Date.now().toString());
 };
-
-
 
 // Get current user
 export const getMe = async () => {
-  let token = sessionStorage.getItem("accessToken");
-
-  // 1. Nếu không có token, thử refresh ngay lập tức
-  if (!token) {
-    const hasRefresh = localStorage.getItem("refreshToken");
-    if (!hasRefresh) throw new Error("No refresh token found");
-    const data = await refreshToken(); // Hàm này đã lưu token vào sessionStorage rồi
-    token = data.accessToken;
-  }
-
-  // 2. Gọi fetchProfile
-  const res = await fetch(`${API_USER_URL}/me`, {
-    method: "GET",
-    headers: {
-      "Authorization": `Bearer ${token}`,
-      "Content-Type": "application/json"
-    }
+  const res = await apiFetch(`${API_USER_URL}/me`, {
+    method: 'GET',
   });
 
   const data = await res.json();
 
-  // 3. Nếu token hết hạn bất thình lình (401), thì mới refresh lại lần cuối
-  if (res.status === 401) {
-    const refreshData = await refreshToken();
-    // Gọi lại fetch lần nữa với token mới
-    return await getMe(); 
+  if (!res.ok) {
+    throw new Error(data.message || 'Failed to get user profile');
   }
 
-  if (!res.ok) throw new Error(data.message || "Failed");
   return data.user;
+};
+
+// Forgot password
+export const forgotPassword = async (email) => {
+  const res = await fetch(`${API_AUTH_URL}/forgot`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email }),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.message || 'Gửi yêu cầu thất bại.');
+  }
+
+  return data;
+};
+
+// Register
+export const registerAccount = async (userData) => {
+  const res = await fetch(`${API_AUTH_URL}/register`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(userData)
+  });
+
+  const contentType = res.headers.get("content-type") || "";
+  let data = null;
+
+  if (res.status !== 204 && contentType.includes("application/json")) {
+    data = await res.json();
+  } else if (res.status !== 204) {
+    const text = await res.text();
+    data = { message: text };
+  }
+
+  if (!res.ok) {
+    throw new Error(data?.message || "Đăng ký thất bại");
+  }
+
+  return data || { success: true };
+};
+
+// Reset password
+export const resetPassword = async (resetData) => {
+  const res = await fetch(`${API_AUTH_URL}/reset`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(resetData),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.message || 'Đặt lại mật khẩu thất bại.');
+  }
+
+  if (data.accessToken) {
+    saveAuthData(data);
+  }
+
+  return data;
+};
+
+// Update profile
+export const updateProfile = async (profileData) => {
+  const res = await apiFetch(`${API_AUTH_URL}/profile`, {
+    method: 'PUT',
+    body: JSON.stringify(profileData),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.message || 'Cập nhật thất bại');
+  }
+
+  return data;
+};
+
+// Update avatar
+export const updateAvatar = async (formData) => {
+  const res = await apiFetch(`${API_AUTH_URL}/avatar`, {
+    method: 'PUT',
+    body: formData,
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.message || 'Lỗi tải ảnh');
+  }
+
+  return data;
+};
+
+// Delete / Disable account
+export const manageAccount = async (password, type) => {
+  const endpoint = type === 'delete' ? 'delete' : 'disable';
+
+  const res = await apiFetch(`${API_AUTH_URL}/account/${endpoint}`, {
+    method: 'POST',
+    body: JSON.stringify({ password }),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.message || 'Xác nhận mật khẩu không chính xác');
+  }
+
+  return data;
+};
+
+// Update phone
+export const updatePhone = async (phoneData) => {
+  const res = await apiFetch(`${API_AUTH_URL}/phone`, {
+    method: 'PUT',
+    body: JSON.stringify(phoneData),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.message || 'Không thể cập nhật số điện thoại');
+  }
+
+  return data;
+};
+
+// Change password
+export const changePassword = async (passwordData) => {
+  const res = await apiFetch(`${API_AUTH_URL}/password`, {
+    method: 'PUT',
+    body: JSON.stringify(passwordData),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.message || 'Không thể cập nhật mật khẩu');
+  }
+
+  return data;
+};
+
+// Restore account
+export const restoreAccount = async (email, password) => {
+  const res = await fetch(`${API_AUTH_URL}/account/restore`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email, password }),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.message || 'Không thể khôi phục tài khoản.');
+  }
+
+  // 🔥 QUAN TRỌNG NHẤT
+  saveAuthData(data);
+
+  return data;
 };
